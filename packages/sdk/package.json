@@ -1,0 +1,49 @@
+{
+	"name": "@nowhere-team/tellme-sdk",
+	"version": "2.3.0",
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		},
+		"./schemas": {
+			"types": "./dist/schemas/index.d.ts",
+			"import": "./dist/schemas/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"publishConfig": {
+		"registry": "https://npm.pkg.github.com"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/nowhere-team/tellme.git",
+		"directory": "packages/sdk"
+	},
+	"license": "UNLICENSED",
+	"scripts": {
+		"build": "rm -rf dist && bun run build:js && bun run build:types",
+		"build:js": "bun build ./src/index.ts --outdir ./dist --target browser --format esm --sourcemap",
+		"build:types": "tsc --emitDeclarationOnly --noEmit false",
+		"dev": "tsc --watch",
+		"test": "bun test tests/ --concurrency 1",
+		"test:watch": "bun test tests/ --watch",
+		"typecheck": "tsc --noEmit",
+		"prepublishOnly": "bun run build"
+	},
+	"dependencies": {
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"grammy": "^1.42.0",
+		"jose": "^6.2.2",
+		"typescript": "^5.9.3"
+	}
+}
