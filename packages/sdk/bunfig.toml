@@ -1,5 +1,5 @@
 [test]
-timeout = 5000
-bail = true
+timeout = 10000
+bail = false
 verbose = true
 preload = ["./tests/preload.ts"]

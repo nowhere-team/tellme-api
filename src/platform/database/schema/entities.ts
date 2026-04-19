@@ -2,6 +2,7 @@ import {
 	type AnyPgColumn,
 	index,
 	integer,
+	jsonb,
 	pgEnum,
 	pgTable,
 	text,
@@ -10,21 +11,22 @@ import {
 	uuid,
 } from 'drizzle-orm/pg-core'
 
-// enums
-
 export const userRoleEnum = pgEnum('user_role', ['user', 'moderator', 'admin'])
 export const visibilityEnum = pgEnum('visibility', ['open', 'anonymous'])
-export const storyStatusEnum = pgEnum('story_status', ['draft', 'published', 'hidden'])
-
-// helpers
+export const storyStatusEnum = pgEnum('story_status', [
+	'processing',
+	'ready',
+	'published',
+	'rejected',
+	'hidden',
+])
 
 const timestamptz = (column: string) => timestamp(column, { withTimezone: true })
-
-// users
 
 export const users = pgTable('users', {
 	id: uuid('id').defaultRandom().primaryKey(),
 	username: text('username').notNull().unique(),
+	locale: text('locale').notNull().default('ru'),
 	passwordHash: text('password_hash').notNull(),
 	totpSecret: text('totp_secret'),
 	recoveryHash: text('recovery_hash').notNull(),
@@ -32,8 +34,6 @@ export const users = pgTable('users', {
 	bannedAt: timestamptz('banned_at'),
 	createdAt: timestamptz('created_at').defaultNow().notNull(),
 })
-
-// sessions
 
 export const sessions = pgTable(
 	'sessions',
@@ -51,16 +51,6 @@ export const sessions = pgTable(
 	t => [index('sessions_user_id_idx').on(t.userId)],
 )
 
-// categories
-
-export const categories = pgTable('categories', {
-	id: uuid('id').defaultRandom().primaryKey(),
-	slug: text('slug').notNull().unique(),
-	name: text('name').notNull(),
-})
-
-// stories
-
 export const stories = pgTable(
 	'stories',
 	{
@@ -69,22 +59,25 @@ export const stories = pgTable(
 			.notNull()
 			.references(() => users.id),
 		visibility: visibilityEnum('visibility').notNull().default('open'),
-		status: storyStatusEnum('status').notNull().default('draft'),
-		rawContent: text('raw_content').notNull(),
-		content: text('content'),
-		aiTitle: text('ai_title'),
-		categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
+		status: storyStatusEnum('status').notNull().default('processing'),
+		locale: text('locale').notNull(),
+		raw: text('raw').notNull(),
+		title: text('title'),
+		text: text('text'),
+		replacements: jsonb('replacements').$type<Record<string, string>>(),
+		category: text('category'),
+		warnings: text('warnings').array().notNull().default([]),
+		rejectionCode: text('rejection_code'),
+		rejectionMessage: text('rejection_message'),
 		createdAt: timestamptz('created_at').defaultNow().notNull(),
 		updatedAt: timestamptz('updated_at').defaultNow().notNull(),
 		publishedAt: timestamptz('published_at'),
 	},
 	t => [
-		index('stories_feed_idx').on(t.status, t.categoryId, t.publishedAt),
+		index('stories_feed_idx').on(t.status, t.category, t.publishedAt),
 		index('stories_author_idx').on(t.authorId),
 	],
 )
-
-// vote options
 
 export const voteOptions = pgTable(
 	'vote_options',
@@ -99,8 +92,6 @@ export const voteOptions = pgTable(
 	},
 	t => [unique('vote_options_story_position_uq').on(t.storyId, t.position)],
 )
-
-// votes
 
 export const votes = pgTable(
 	'votes',
@@ -120,8 +111,6 @@ export const votes = pgTable(
 	t => [unique('votes_story_user_uq').on(t.storyId, t.userId)],
 )
 
-// comments
-
 export const comments = pgTable(
 	'comments',
 	{
@@ -132,7 +121,9 @@ export const comments = pgTable(
 		authorId: uuid('author_id')
 			.notNull()
 			.references(() => users.id, { onDelete: 'cascade' }),
-		parentId: uuid('parent_id').references((): AnyPgColumn => comments.id, { onDelete: 'cascade' }),
+		parentId: uuid('parent_id').references((): AnyPgColumn => comments.id, {
+			onDelete: 'cascade',
+		}),
 		content: text('content').notNull(),
 		createdAt: timestamptz('created_at').defaultNow().notNull(),
 	},
@@ -141,8 +132,6 @@ export const comments = pgTable(
 		index('comments_parent_idx').on(t.parentId),
 	],
 )
-
-// reports
 
 export const reports = pgTable(
 	'reports',

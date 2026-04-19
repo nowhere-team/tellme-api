@@ -1,9 +1,43 @@
-// @example
-// export interface User {
-//     id: UserId
-//     displayName: string
-//     username: string | null
-//     avatarUrl: string | null
-//     createdAt: Date
-//     updatedAt: Date
-// }
+import type { CategoryId, StoryId, UserId, VoteOptionId } from '@/brand'
+import type { Category, Locale, Rejection, StoryStatus, Visibility, Warning } from '@/enums'
+
+// a single anonymizable replacement for one placeholder occurrence.
+// placeholders in `text` look like {{original|groupId|id}}.
+// all occurrences of the same person share the same groupId.
+export type Replacements = Record<string, string>
+
+export interface Story {
+	id: StoryId
+	// null when visibility is 'anonymous' and viewer is not the author
+	authorId: UserId | null
+	visibility: Visibility
+	status: StoryStatus
+	locale: Locale
+	raw: string
+	title: string | null
+	text: string | null
+	replacements: Replacements | null
+	category: Category | null
+	warnings: Warning[]
+	rejection: { code: Rejection; message: string } | null
+	createdAt: Date
+	updatedAt: Date
+	publishedAt: Date | null
+}
+
+export interface VoteOption {
+	id: VoteOptionId
+	storyId: StoryId
+	label: string
+	position: number
+	voteCount: number
+}
+
+export interface StoryView {
+	story: Story
+	options: VoteOption[]
+	userVote: string | null
+}
+
+// kept for potential future use; not exported elsewhere right now
+export type { CategoryId }

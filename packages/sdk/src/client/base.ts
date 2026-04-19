@@ -90,6 +90,7 @@ export class ApiError extends Error {
 		readonly code: string,
 		message: string,
 		readonly status: number,
+		readonly issues?: Array<{ path: string; code: string; message: string }>,
 	) {
 		super(message)
 	}
@@ -110,7 +111,15 @@ export class ApiError extends Error {
 		return this.status === 401
 	}
 
-	static fromResponse(data: { code?: string; message?: string }, status: number): ApiError {
-		return new ApiError(data.code ?? 'UNKNOWN', data.message ?? 'unknown error', status)
+	static fromResponse(
+		data: { code?: string; message?: string; issues?: any[] },
+		status: number,
+	): ApiError {
+		return new ApiError(
+			data.code ?? 'UNKNOWN',
+			data.message ?? 'unknown error',
+			status,
+			data.issues,
+		)
 	}
 }
