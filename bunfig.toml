@@ -1,0 +1,5 @@
+[install.scopes]
+"@nowhere-team" = { url = "https://npm.pkg.github.com", token = "$GITHUB_TOKEN" }
+
+[install]
+optional = true
