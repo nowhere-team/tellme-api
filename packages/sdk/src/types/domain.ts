@@ -1,4 +1,4 @@
-import type { CategoryId, StoryId, UserId, VoteOptionId } from '@/brand'
+import type { StoryId, UserId, VoteOptionId } from '@/brand'
 import type { Category, Locale, Rejection, StoryStatus, Visibility, Warning } from '@/enums'
 
 // a single anonymizable replacement for one placeholder occurrence.
@@ -56,6 +56,3 @@ export interface StoryView {
 	options: VoteOption[]
 	userVote: string | null
 }
-
-// kept for potential future use; not exported elsewhere right now
-export type { CategoryId }

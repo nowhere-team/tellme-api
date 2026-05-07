@@ -1,4 +1,6 @@
-import type { TextSegment, VoteOption } from '@/types/domain'
+// noinspection ES6PreferShortImport
+
+import type { TextSegment, VoteOption } from '../types/domain'
 
 const PLACEHOLDER_RE = /\{\{([^|{}]+)\|(\d+)\|(\d+)}}/g
 

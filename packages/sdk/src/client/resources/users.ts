@@ -1,5 +1,7 @@
-import type { BaseClient } from '@/client/base'
-import type { MeResponse, UsernamePreviewResponse } from '@/types'
+// noinspection ES6PreferShortImport
+
+import type { MeResponse, UsernamePreviewResponse } from '../../types'
+import type { BaseClient } from '../base'
 
 export class UsersResource {
 	constructor(private client: BaseClient) {}

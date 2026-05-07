@@ -68,6 +68,7 @@ export async function start(options?: { useFakeAi?: boolean }): Promise<App> {
 	const server = createServer({
 		database,
 		cache,
+		repos,
 		services,
 		logger,
 		host: config.HOST,

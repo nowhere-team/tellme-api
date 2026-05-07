@@ -1,3 +1,5 @@
+import { UserId } from '@/brand'
+
 import { createAndPublish, fakeAi, waitForStatus } from './helpers'
 import { cleanDatabase, getTestContext, type TestContext } from './setup'
 import { beforeAll, beforeEach, describe, expect, test } from 'bun:test'
@@ -19,7 +21,9 @@ describe('stories — processing flow', () => {
 		const raw = 'я накричал на коллегу когда он опять опоздал на стендап, теперь стыдно'
 		fakeAi(ctx).enqueue({
 			decision: 'accepted',
+			headline: 'накричал на коллегу за опоздание',
 			title: 'был ли я прав?',
+			preview: 'коллега снова опоздал на стендап. я не сдержался.',
 			text: raw,
 			replacements: {},
 			category: 'work',
@@ -90,7 +94,7 @@ describe('stories — processing flow', () => {
 
 		const view = await auth.client.stories.get(story.id)
 		expect(view.story.status).toBe('rejected')
-		expect(view.story.rejectionCode).toBe('not_a_story')
+		expect(view.story.rejection?.code).toBe('not_a_story')
 	})
 })
 
@@ -171,7 +175,7 @@ describe('stories — visibility', () => {
 		const story = await createAndPublish(ctx, author, { visibility: 'anonymous' })
 
 		const viewedByAuthor = await author.client.stories.get(story.id)
-		expect(viewedByAuthor.story.authorId).toBe(author.userId)
+		expect(viewedByAuthor.story.authorId).toBe(UserId(author.userId))
 
 		const viewedByStranger = await stranger.client.stories.get(story.id)
 		expect(viewedByStranger.story.authorId).toBeNull()
@@ -182,7 +186,7 @@ describe('stories — visibility', () => {
 		await createAndPublish(ctx, author)
 
 		const anon = ctx.createClient()
-		const feed = await anon.stories.feed({ limit: 10 })
+		const feed = await anon.stories.feed({ limit: 10, sort: 'hot' })
 		expect(feed.items.length).toBe(1)
 	})
 })

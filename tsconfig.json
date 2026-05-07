@@ -17,7 +17,8 @@
 		"noPropertyAccessFromIndexSignature": false,
 		"baseUrl": ".",
 		"paths": {
-			"@/*": ["./src/*"],
+			"@/data/*": ["./packages/sdk/data/*"],
+			"@/*": ["./src/*", "./packages/sdk/src/*"],
 			"@nowhere-team/tellme-sdk": ["./packages/sdk/src/index.ts"]
 		}
 	},

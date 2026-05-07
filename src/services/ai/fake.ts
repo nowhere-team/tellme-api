@@ -54,7 +54,10 @@ export class FakeAiProcessor implements AiProcessor {
 	private defaultAccepted(raw: string): Extract<AiResponse, { decision: 'accepted' }> {
 		return {
 			decision: 'accepted',
+			headline: 'история без названия',
 			title: 'Был ли я прав?',
+			preview:
+				'Произошла ситуация, в которой автор не уверен как поступил. Сообщество должно решить.',
 			text: raw,
 			replacements: {},
 			category: 'other',

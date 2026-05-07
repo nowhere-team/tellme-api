@@ -35,7 +35,7 @@
 		"dev": "tsc --watch",
 		"test": "bun test tests/ --concurrency 1",
 		"test:watch": "bun test tests/ --watch",
-		"typecheck": "tsc --noEmit",
+		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"prepublishOnly": "bun run build"
 	},
 	"dependencies": {
