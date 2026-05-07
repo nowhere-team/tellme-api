@@ -1,5 +1,6 @@
 {
 	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
 		"target": "ESNext",
 		"module": "Preserve",
 		"moduleResolution": "bundler",
@@ -14,6 +15,7 @@
 		"noUnusedParameters": false,
 		"noUncheckedIndexedAccess": false,
 		"noPropertyAccessFromIndexSignature": false,
+		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./src/*"],
 			"@nowhere-team/tellme-sdk": ["./packages/sdk/src/index.ts"]
