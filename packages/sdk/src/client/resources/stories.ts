@@ -12,7 +12,7 @@ type AuthorQuery = z.infer<typeof storySchemas.authorQuery>
 export class StoriesResource {
 	constructor(private client: BaseClient) {}
 
-	feed = (query: FeedQuery = { limit: 20 }) =>
+	feed = (query: FeedQuery = { limit: 20, sort: 'hot' }) =>
 		this.client.request<PaginatedStoryViews>('GET', '/stories', {
 			query: flatten(query),
 		})

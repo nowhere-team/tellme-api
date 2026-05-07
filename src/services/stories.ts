@@ -59,7 +59,9 @@ export class StoryService {
 
 	async applyAiAccepted(storyId: string, result: AiAccepted): Promise<void> {
 		await this.repos.stories.applyAccepted(storyId, {
+			headline: result.headline,
 			title: result.title,
+			preview: result.preview,
 			text: result.text,
 			replacements: result.replacements,
 			category: result.category as Category,

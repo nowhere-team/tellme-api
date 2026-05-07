@@ -15,6 +15,7 @@ export const castVote = z.object({
 
 export const feedQuery = pagination.extend({
 	category: z.string().optional(),
+	sort: z.enum(['hot', 'new']).default('hot'),
 })
 
 export const authorQuery = pagination

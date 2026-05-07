@@ -61,12 +61,15 @@ export const stories = pgTable(
 		visibility: visibilityEnum('visibility').notNull().default('open'),
 		status: storyStatusEnum('status').notNull().default('processing'),
 		locale: text('locale').notNull(),
-		raw: text('raw').notNull(),
+		raw: text('raw'), // nullable: cleared on publish
+		headline: text('headline'), // short declarative for feed cards
+		preview: text('preview'),
 		title: text('title'),
 		text: text('text'),
 		replacements: jsonb('replacements').$type<Record<string, string>>(),
 		category: text('category'),
 		warnings: text('warnings').array().notNull().default([]),
+		totalVoteCount: integer('total_vote_count').notNull().default(0),
 		rejectionCode: text('rejection_code'),
 		rejectionMessage: text('rejection_message'),
 		createdAt: timestamptz('created_at').defaultNow().notNull(),
@@ -74,7 +77,8 @@ export const stories = pgTable(
 		publishedAt: timestamptz('published_at'),
 	},
 	t => [
-		index('stories_feed_idx').on(t.status, t.category, t.publishedAt),
+		index('stories_feed_hot_idx').on(t.status, t.publishedAt, t.totalVoteCount),
+		index('stories_feed_new_idx').on(t.status, t.publishedAt),
 		index('stories_author_idx').on(t.authorId),
 	],
 )
@@ -125,6 +129,7 @@ export const comments = pgTable(
 			onDelete: 'cascade',
 		}),
 		content: text('content').notNull(),
+		status: text('status').notNull().default('published'), // 'published' | 'rejected'
 		createdAt: timestamptz('created_at').defaultNow().notNull(),
 	},
 	t => [

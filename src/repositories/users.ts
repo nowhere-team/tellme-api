@@ -1,5 +1,5 @@
 import { buildDisplayId, DICTIONARY, type Language } from '@nowhere-team/tellme-sdk'
-import { eq, like } from 'drizzle-orm'
+import { eq, inArray, like } from 'drizzle-orm'
 
 import { AppError } from '@/common/errors'
 import { type Connection, users } from '@/platform/database'
@@ -30,7 +30,12 @@ export class UserRepository {
 
 			const [user] = await this.db
 				.insert(users)
-				.values({ username, locale: data.locale ?? 'ru', ...data })
+				.values({
+					username,
+					passwordHash: data.passwordHash,
+					totpSecret: data.totpSecret,
+					recoveryHash: data.recoveryHash,
+				})
 				.onConflictDoNothing({ target: users.username })
 				.returning()
 
@@ -82,5 +87,10 @@ export class UserRepository {
 		}, -1)
 
 		return max + 1
+	}
+
+	async findManyByIds(ids: string[]): Promise<DbUser[]> {
+		if (ids.length === 0) return []
+		return this.db.select().from(users).where(inArray(users.id, ids))
 	}
 }

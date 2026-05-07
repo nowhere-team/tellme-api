@@ -4,7 +4,9 @@ import type { OpenRouterClient } from '@/platform/openrouter'
 import type { Repositories } from '@/repositories'
 
 import { type AiCallbacks, type AiProcessor, FakeAiProcessor, GeminiAiProcessor } from './ai'
+import { AiCommentModerator, PassthroughCommentModerator } from './ai/comment-moderator'
 import { type AuthConfig, AuthService } from './auth'
+import { CommentService } from './comments'
 import { SessionsService } from './sessions'
 import { StoryService } from './stories'
 import type { StreamBus } from './stream-bus'
@@ -13,6 +15,7 @@ export interface Services {
 	auth: AuthService
 	sessions: SessionsService
 	stories: StoryService
+	comments: CommentService
 	bus: StreamBus
 	ai: AiProcessor
 }
@@ -31,8 +34,6 @@ export function createServices(deps: ServicesDeps): Services {
 	const sessions = new SessionsService(deps.cache)
 	const auth = new AuthService(deps.repos, sessions, deps.auth)
 
-	// stories + ai have a circular-ish dependency (ai calls back into stories).
-	// break it with a forward reference.
 	let stories: StoryService
 
 	const callbacks: AiCallbacks = {
@@ -48,11 +49,19 @@ export function createServices(deps: ServicesDeps): Services {
 
 	stories = new StoryService(deps.repos, ai)
 
-	return { auth, sessions, stories, bus: deps.bus, ai }
+	const moderator =
+		deps.useFakeAi || !deps.openrouter
+			? new PassthroughCommentModerator()
+			: new AiCommentModerator(deps.openrouter)
+
+	const comments = new CommentService(deps.repos, moderator)
+
+	return { auth, sessions, stories, comments, bus: deps.bus, ai }
 }
 
 export * from './ai'
 export { AuthService } from './auth'
+export { CommentService } from './comments'
 export { SessionsService } from './sessions'
 export { StoryService } from './stories'
 export * from './stream-bus'

@@ -8,22 +8,40 @@ export type Replacements = Record<string, string>
 
 export interface Story {
 	id: StoryId
-	// null when visibility is 'anonymous' and viewer is not the author
 	authorId: UserId | null
 	visibility: Visibility
 	status: StoryStatus
 	locale: Locale
-	raw: string
+	raw: string | null
+	headline: string | null
 	title: string | null
+	preview: string | null
 	text: string | null
 	replacements: Replacements | null
 	category: Category | null
 	warnings: Warning[]
 	rejection: { code: Rejection; message: string } | null
+	totalVoteCount: number
 	createdAt: Date
 	updatedAt: Date
 	publishedAt: Date | null
 }
+
+export interface CommentView {
+	id: string
+	storyId: string
+	authorId: string | null
+	displayName: string | null
+	isAuthor: boolean
+	parentId: string | null
+	content: string
+	createdAt: Date
+	replies: CommentView[]
+}
+
+export type TextSegment =
+	| { type: 'text'; value: string }
+	| { type: 'placeholder'; groupId: number; id: number; replacement: string }
 
 export interface VoteOption {
 	id: VoteOptionId

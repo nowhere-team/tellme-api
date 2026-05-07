@@ -1,5 +1,6 @@
 import type { Database } from '@/platform/database'
 
+import { CommentRepository } from './comments'
 import { SessionRepository } from './sessions'
 import { StoryRepository } from './stories'
 import { UserRepository } from './users'
@@ -13,9 +14,12 @@ export function createRepositories(db: Database) {
 		sessions: new SessionRepository(db),
 		stories: new StoryRepository(db),
 		votes: new VoteRepository(db),
+		comments: new CommentRepository(db),
 	}
 }
 
+export type { DbComment } from './comments'
+export { CommentRepository } from './comments'
 export type { DbSession } from './sessions'
 export { SessionRepository } from './sessions'
 export type { DbStory, DbVoteOption, StoryWithOptions } from './stories'

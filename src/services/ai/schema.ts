@@ -15,7 +15,9 @@ const voteOption = z.object({
 
 export const aiAcceptedSchema = z.object({
 	decision: z.literal('accepted'),
+	headline: z.string().min(5).max(80),
 	title: z.string().min(5).max(120),
+	preview: z.string().min(20).max(400), // new: 2-3 sentence story hook
 	text: z.string().min(50).max(7000),
 	replacements: z.record(z.string().regex(/^\d+$/), z.string().min(1).max(120)),
 	category: z.enum(CATEGORIES),

@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { AppError } from '@/common/errors'
-import { type Connection, voteOptions, votes } from '@/platform/database'
+import { type Connection, stories, voteOptions, votes } from '@/platform/database'
 
 export type DbVote = typeof votes.$inferSelect
 
@@ -25,6 +25,11 @@ export class VoteRepository {
 					.update(voteOptions)
 					.set({ voteCount: sql`${voteOptions.voteCount} + 1` })
 					.where(eq(voteOptions.id, optionId))
+
+				await tx
+					.update(stories)
+					.set({ totalVoteCount: sql`${stories.totalVoteCount} + 1` })
+					.where(eq(stories.id, storyId))
 
 				return vote
 			})

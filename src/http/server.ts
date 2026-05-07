@@ -5,19 +5,23 @@ import { authMiddleware } from '@/http/middleware/auth'
 import { errorHandler } from '@/http/middleware/errors'
 import {
 	createAuthRoutes,
+	createCommentRoutes,
 	createHealthRoutes,
 	createStoryRoutes,
 	createStreamRoutes,
+	createUserRoutes,
 	createUserStoryRoutes,
 } from '@/http/routes'
 import type { Cache } from '@/platform/cache'
 import type { Database } from '@/platform/database'
 import type { Logger } from '@/platform/logger'
+import type { Repositories } from '@/repositories'
 import type { Services } from '@/services'
 
 export interface ServerDeps {
 	database: Database
 	cache: Cache
+	repos: Repositories
 	services: Services
 	logger: Logger
 	host: string
@@ -41,6 +45,8 @@ function createRouter(deps: ServerDeps) {
 	api.route('/health', createHealthRoutes({ database: deps.database, cache: deps.cache }))
 	api.route('/auth', createAuthRoutes(deps.services.auth, deps.accessTtl))
 	api.route('/stories', createStoryRoutes(deps.services.stories))
+	api.route('/stories', createCommentRoutes(deps.services.comments))
+	api.route('/users', createUserRoutes(deps.repos))
 	api.route('/users', createUserStoryRoutes(deps.services.stories))
 	api.route('/stream', createStreamRoutes(deps.services.bus))
 
@@ -54,7 +60,6 @@ export function createServer(deps: ServerDeps): Server {
 		fetch: router.fetch,
 		port: deps.port,
 		hostname: deps.host,
-		// SSE connections stay open indefinitely; disable the default idle timeout
 		idleTimeout: 0,
 	})
 	deps.logger.info(`listening on ${deps.host}:${deps.port}`)

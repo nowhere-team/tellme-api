@@ -1,4 +1,6 @@
 export { createAuthRoutes } from './auth'
+export { createCommentRoutes } from './comments'
 export { createHealthRoutes } from './health'
 export { createStoryRoutes, createUserStoryRoutes } from './stories'
 export { createStreamRoutes } from './stream'
+export { createUserRoutes } from './users'

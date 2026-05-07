@@ -20,7 +20,9 @@ export interface CreateProcessingData {
 }
 
 export interface AcceptedData {
+	headline: string
 	title: string
+	preview: string
 	text: string
 	replacements: Record<string, string>
 	category: Category
@@ -37,6 +39,7 @@ export interface FeedQuery {
 	category?: string
 	limit?: number
 	cursor?: string
+	sort?: 'hot' | 'new'
 }
 
 export interface AuthorQuery {
@@ -72,7 +75,9 @@ export class StoryRepository {
 				.update(stories)
 				.set({
 					status: 'ready',
+					headline: data.headline,
 					title: data.title,
+					preview: data.preview,
 					text: data.text,
 					replacements: data.replacements,
 					category: data.category,
@@ -84,7 +89,6 @@ export class StoryRepository {
 				.where(eq(stories.id, storyId))
 				.returning()
 
-			// idempotent: re-running replaces old options
 			await tx.delete(voteOptions).where(eq(voteOptions.storyId, storyId))
 			const options = await tx
 				.insert(voteOptions)
@@ -113,7 +117,7 @@ export class StoryRepository {
 		const now = new Date()
 		const [row] = await this.db
 			.update(stories)
-			.set({ status: 'published', publishedAt: now, updatedAt: now })
+			.set({ status: 'published', raw: null, publishedAt: now, updatedAt: now })
 			.where(and(eq(stories.id, storyId), eq(stories.status, 'ready')))
 			.returning()
 		return row ?? null
@@ -153,11 +157,10 @@ export class StoryRepository {
 
 	async findFeed(query: FeedQuery = {}): Promise<PaginatedStories> {
 		const limit = query.limit ?? 20
+		const sort = query.sort ?? 'hot'
 		const conditions = [eq(stories.status, 'published')]
 
-		if (query.category) {
-			conditions.push(eq(stories.category, query.category))
-		}
+		if (query.category) conditions.push(eq(stories.category, query.category))
 
 		if (query.cursor) {
 			const c = decodeCursor(query.cursor)
@@ -171,18 +174,30 @@ export class StoryRepository {
 			}
 		}
 
-		const rows = await this.db
-			.select()
-			.from(stories)
-			.where(and(...conditions))
-			.orderBy(desc(stories.publishedAt), desc(stories.id))
-			.limit(limit + 1)
+		const where = and(...conditions)
+
+		const rows =
+			sort === 'hot'
+				? await this.db
+						.select()
+						.from(stories)
+						.where(where)
+						.orderBy(
+							sql`(${stories.totalVoteCount}::float / power(extract(epoch from now() - ${stories.publishedAt}) / 3600 + 2, 1.5)) desc`,
+							desc(stories.id),
+						)
+						.limit(limit + 1)
+				: await this.db
+						.select()
+						.from(stories)
+						.where(where)
+						.orderBy(desc(stories.publishedAt), desc(stories.id))
+						.limit(limit + 1)
 
 		const hasMore = rows.length > limit
 		const items = hasMore ? rows.slice(0, limit) : rows
 		const last = items.at(-1)
 		const nextCursor = hasMore && last?.publishedAt ? encodeCursor(last.publishedAt, last.id) : null
-
 		return { items, nextCursor }
 	}
 
