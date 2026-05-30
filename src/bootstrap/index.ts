@@ -75,6 +75,7 @@ export async function start(options?: { useFakeAi?: boolean }): Promise<App> {
 		port: config.PORT,
 		jwtSecret: config.JWT_SECRET,
 		accessTtl: config.ACCESS_TOKEN_TTL,
+		captchaEnabled: config.CAPTCHA_ENABLED,
 	})
 
 	return { config, logger, database, cache, repos, services, openrouter, server }

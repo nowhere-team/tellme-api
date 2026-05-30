@@ -57,6 +57,7 @@ export async function getTestContext(): Promise<TestContext> {
 	process.env.SESSION_TTL = '604800'
 	process.env.OPENROUTER_API_KEY = 'test-key'
 	process.env.OPENROUTER_MODEL = 'google/gemini-2.5-flash'
+	process.env.CAPTCHA_ENABLED = 'false'
 
 	const { start } = await import('../../../src/bootstrap')
 	const app = await start({ useFakeAi: true })

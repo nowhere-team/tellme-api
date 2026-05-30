@@ -28,6 +28,7 @@ export interface ServerDeps {
 	port: number
 	jwtSecret: string
 	accessTtl: number
+	captchaEnabled: boolean
 }
 
 export interface Server {

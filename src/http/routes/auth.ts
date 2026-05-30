@@ -8,7 +8,12 @@ import { AppError } from '@/common/errors'
 import type { AuthEnv } from '@/http/middleware/auth'
 import type { AuthService } from '@/services/auth'
 
-export function createAuthRoutes(auth: AuthService, accessTtl: number, captchaKey: string) {
+export function createAuthRoutes(
+	auth: AuthService,
+	accessTtl: number,
+	captchaKey: string,
+	captchaEnabled: boolean,
+) {
 	const app = new Hono<AuthEnv>()
 
 	// ALTCHA proof-of-work challenge — self-hosted, no external service.
@@ -20,10 +25,12 @@ export function createAuthRoutes(auth: AuthService, accessTtl: number, captchaKe
 	app.post('/register', async c => {
 		const raw = (await c.req.json()) as Record<string, unknown>
 
-		// verify the captcha solution produced by the widget
-		const solution = typeof raw.altcha === 'string' ? raw.altcha : null
-		const ok = solution ? await verifySolution(solution, captchaKey) : false
-		if (!ok) throw AppError.validation('captcha verification failed')
+		// verify the captcha solution produced by the widget (skipped in tests)
+		if (captchaEnabled) {
+			const solution = typeof raw.altcha === 'string' ? raw.altcha : null
+			const ok = solution ? await verifySolution(solution, captchaKey) : false
+			if (!ok) throw AppError.validation('captcha verification failed')
+		}
 
 		const body = authSchemas.register.parse(raw)
 		const userAgent = c.req.header('User-Agent') ?? null

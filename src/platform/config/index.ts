@@ -24,6 +24,12 @@ const schema = z.object({
 	OPENROUTER_MODEL: z.string().default('google/gemini-3-flash-preview'),
 
 	STREAM_BUS: z.enum(['memory', 'redis']).default('memory'),
+
+	// ALTCHA captcha on registration; set to "false" to disable (tests)
+	CAPTCHA_ENABLED: z
+		.enum(['true', 'false'])
+		.default('true')
+		.transform(v => v === 'true'),
 })
 
 export function createConfig(env: Record<string, any>) {
