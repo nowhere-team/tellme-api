@@ -4,7 +4,7 @@ import type { OpenRouterClient } from '@/platform/openrouter'
 import type { Repositories } from '@/repositories'
 
 import { type AiCallbacks, type AiProcessor, FakeAiProcessor, GeminiAiProcessor } from './ai'
-import { AiCommentModerator, PassthroughCommentModerator } from './ai/comment-moderator'
+import { PassthroughCommentModerator } from './ai/comment-moderator'
 import { type AuthConfig, AuthService } from './auth'
 import { CommentService } from './comments'
 import { SessionsService } from './sessions'
@@ -49,10 +49,9 @@ export function createServices(deps: ServicesDeps): Services {
 
 	stories = new StoryService(deps.repos, ai)
 
-	const moderator =
-		deps.useFakeAi || !deps.openrouter
-			? new PassthroughCommentModerator()
-			: new AiCommentModerator(deps.openrouter)
+	// NOTE: comment moderation via the streaming LLM hangs (plain-text reply
+	// parsed as JSON never resolves), so use the passthrough moderator.
+	const moderator = new PassthroughCommentModerator()
 
 	const comments = new CommentService(deps.repos, moderator)
 

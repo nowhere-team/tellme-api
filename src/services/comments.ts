@@ -1,9 +1,16 @@
+import { formatUsername, type Language } from '@nowhere-team/tellme-sdk'
+
 import { AppError } from '@/common/errors'
 import type { Repositories } from '@/repositories'
 import type { DbComment } from '@/repositories/comments'
 import type { DbUser } from '@/repositories/users'
 
 import type { CommentModerator } from './ai/comment-moderator'
+
+function displayNameFor(user: DbUser | undefined | null): string | null {
+	if (!user) return null
+	return formatUsername(user.username, user.locale as Language)
+}
 
 export interface CommentView extends Omit<DbComment, 'authorId'> {
 	authorId: string | null
@@ -70,7 +77,7 @@ export class CommentService {
 			.map(c => ({
 				...c,
 				authorId: c.authorId,
-				displayName: userMap.get(c.authorId)?.username ?? null,
+				displayName: displayNameFor(userMap.get(c.authorId)),
 				isAuthor: c.authorId === storyAuthorId,
 				replies: this.buildTree(all, c.id, storyAuthorId, userMap),
 			}))
@@ -85,7 +92,7 @@ export class CommentService {
 		return {
 			...comment,
 			authorId: comment.authorId,
-			displayName: user?.username ?? null,
+			displayName: displayNameFor(user),
 			isAuthor: comment.authorId === storyAuthorId,
 			replies,
 		}
