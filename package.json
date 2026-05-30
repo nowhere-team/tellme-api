@@ -34,6 +34,7 @@
 		"@openrouter/sdk": "^0.12.15",
 		"@scure/bip39": "^2.0.1",
 		"@streamparser/json": "^0.0.22",
+		"altcha-lib": "^2.2.0",
 		"drizzle-orm": "^0.45.2",
 		"hono": "^4.12.14",
 		"jose": "^6.2.2",

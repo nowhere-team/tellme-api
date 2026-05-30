@@ -43,7 +43,7 @@ function createRouter(deps: ServerDeps) {
 	api.use('*', authMiddleware(deps.jwtSecret, deps.services.sessions, true))
 
 	api.route('/health', createHealthRoutes({ database: deps.database, cache: deps.cache }))
-	api.route('/auth', createAuthRoutes(deps.services.auth, deps.accessTtl))
+	api.route('/auth', createAuthRoutes(deps.services.auth, deps.accessTtl, deps.jwtSecret))
 	api.route('/stories', createStoryRoutes(deps.services.stories))
 	api.route('/stories', createCommentRoutes(deps.services.comments))
 	api.route('/users', createUserRoutes(deps.repos))
