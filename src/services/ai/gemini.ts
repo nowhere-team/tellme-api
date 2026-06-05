@@ -4,7 +4,7 @@ import type { Logger } from '@/platform/logger'
 import type { OpenRouterClient } from '@/platform/openrouter'
 
 import { buildUserPrompt, SYSTEM_PROMPT } from './prompts'
-import { type AiResponse, aiResponseSchema, getAiJsonSchema, validatePlaceholders } from './schema'
+import { type AiResponse, aiResponseSchema, getAiJsonSchema, sanitizePlaceholders } from './schema'
 import type { AiCallbacks, AiProcessInput, AiProcessor } from './types'
 
 const STREAM_PATHS = [
@@ -54,7 +54,10 @@ export class GeminiAiProcessor implements AiProcessor {
 			const parsed = aiResponseSchema.parse(await final)
 
 			if (parsed.decision === 'accepted') {
-				validatePlaceholders(parsed.text, parsed.replacements)
+				// repair (not reject) any placeholder/replacement mismatch the model produced
+				const sane = sanitizePlaceholders(parsed.text, parsed.replacements)
+				parsed.text = sane.text
+				parsed.replacements = sane.replacements
 				await onAccepted(input.storyId, parsed)
 				publish(input.userId, {
 					type: StreamEventType.Ready,

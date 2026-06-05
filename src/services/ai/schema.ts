@@ -8,6 +8,42 @@ import { z } from 'zod'
 // - id: positive integer (must match a key in replacements)
 export const PLACEHOLDER_RE = /\{\{([^|{}]+)\|(\d+)\|(\d+)}}/g
 
+// Repairs the model's name placeholders so a single inconsistency never kills a
+// story: keeps only replacements actually referenced in the text, and fills any
+// placeholder missing a replacement — reusing another replacement from the same
+// person (group) when possible, otherwise a neutral fallback. Always returns a
+// consistent (text, replacements) pair.
+export function sanitizePlaceholders(
+	text: string,
+	replacements: Record<string, string>,
+): { text: string; replacements: Record<string, string> } {
+	const idToGroup = new Map<string, string>()
+	const usedIds = new Set<string>()
+	for (const m of text.matchAll(PLACEHOLDER_RE)) {
+		usedIds.add(m[3]!)
+		idToGroup.set(m[3]!, m[2]!)
+	}
+
+	const out: Record<string, string> = {}
+	for (const id of usedIds) {
+		if (replacements[id]) {
+			out[id] = replacements[id]
+			continue
+		}
+		const group = idToGroup.get(id)
+		let fallback: string | undefined
+		for (const [rid, val] of Object.entries(replacements)) {
+			if (val && idToGroup.get(rid) === group) {
+				fallback = val
+				break
+			}
+		}
+		out[id] = fallback ?? 'человек'
+	}
+
+	return { text, replacements: out }
+}
+
 const voteOption = z.object({
 	label: z.string().min(1).max(40),
 	position: z.number().int().min(0).max(3),
