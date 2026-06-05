@@ -3,6 +3,7 @@ import { createChallenge, verifySolution } from 'altcha-lib'
 import type { Context } from 'hono'
 import { Hono } from 'hono'
 import { deleteCookie, setCookie } from 'hono/cookie'
+import { z } from 'zod'
 
 import { AppError } from '@/common/errors'
 import type { AuthEnv } from '@/http/middleware/auth'
@@ -43,6 +44,20 @@ export function createAuthRoutes(
 			totpUri: result.totpUri,
 			accessToken: result.accessToken,
 		})
+	})
+
+	// Activate 2FA for the authenticated user after verifying a code. The secret
+	// comes from the client (it was shown in the QR at registration, never stored).
+	const enableTotpSchema = z.object({
+		secret: z.string().min(1),
+		code: z.string().min(6).max(8),
+	})
+	app.post('/totp/enable', async c => {
+		const payload = c.get('auth')
+		if (!payload) throw AppError.forbidden('not authenticated')
+		const body = enableTotpSchema.parse(await c.req.json())
+		await auth.enableTotp(payload.sub, body.secret, body.code)
+		return c.body(null, 204)
 	})
 
 	app.post('/login', async c => {
