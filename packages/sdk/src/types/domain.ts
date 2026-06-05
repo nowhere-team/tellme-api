@@ -55,4 +55,5 @@ export interface StoryView {
 	story: Story
 	options: VoteOption[]
 	userVote: string | null
+	commentCount: number
 }

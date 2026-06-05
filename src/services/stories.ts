@@ -17,6 +17,7 @@ export interface StoryView {
 	story: PublicStory
 	options: DbVoteOption[]
 	userVote: string | null
+	commentCount: number
 }
 
 export interface PaginatedStoryViews {
@@ -107,12 +108,16 @@ export class StoryService {
 			throw AppError.notFound('story', storyId)
 		}
 
-		const userVote = viewerId ? await this.repos.votes.findUserVote(storyId, viewerId) : null
+		const [userVote, counts] = await Promise.all([
+			viewerId ? this.repos.votes.findUserVote(storyId, viewerId) : Promise.resolve(null),
+			this.repos.comments.countForStories([storyId]),
+		])
 
 		return {
 			story: this.toPublic(detail, viewerId),
 			options: detail.options,
 			userVote: userVote?.optionId ?? null,
+			commentCount: counts.get(storyId) ?? 0,
 		}
 	}
 
@@ -170,9 +175,10 @@ export class StoryService {
 		if (page.items.length === 0) return { items: [], nextCursor: page.nextCursor }
 
 		const ids = page.items.map(s => s.id)
-		const [options, userVotes] = await Promise.all([
+		const [options, userVotes, commentCounts] = await Promise.all([
 			this.repos.stories.findOptionsForStories(ids),
 			viewerId ? this.repos.votes.findUserVotesForStories(viewerId, ids) : Promise.resolve([]),
+			this.repos.comments.countForStories(ids),
 		])
 
 		const optionsByStory = new Map<string, DbVoteOption[]>()
@@ -190,6 +196,7 @@ export class StoryService {
 				story: this.toPublic(s, viewerId),
 				options: optionsByStory.get(s.id) ?? [],
 				userVote: voteByStory.get(s.id) ?? null,
+				commentCount: commentCounts.get(s.id) ?? 0,
 			})),
 			nextCursor: page.nextCursor,
 		}
