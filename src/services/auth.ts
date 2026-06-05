@@ -1,4 +1,4 @@
-import { formatUsername, type Language } from '@nowhere-team/tellme-sdk'
+import { formatUsername, type Language, resolveDisplayName } from '@nowhere-team/tellme-sdk'
 
 import {
 	buildTotpUri,
@@ -70,12 +70,15 @@ export class AuthService {
 		const mnemonic = generateMnemonic(12)
 		const recoveryHash = mnemonicToHash(mnemonic)
 		const passwordHash = await hashPassword(input.password)
+		// Generate the secret so we can show the QR, but DON'T activate 2FA yet —
+		// it stays off until the user proves they can produce a code (enableTotp).
+		// This keeps the step optional and avoids locking out users who skip it.
 		const totpSecret = input.enableTotp ? generateTotpSecret() : null
 
 		const user = await this.repos.users.create({
 			passwordHash,
 			recoveryHash,
-			totpSecret,
+			totpSecret: null,
 			locale: input.locale,
 		})
 
@@ -85,8 +88,16 @@ export class AuthService {
 		return { user: toPublic(user), mnemonic, totpUri, accessToken }
 	}
 
+	// Confirm-to-enable: activate 2FA only after the user proves they can produce
+	// a valid code from the secret shown in the QR. The secret round-trips through
+	// the client (it was only ever delivered in the QR, never stored).
+	async enableTotp(userId: string, secret: string, code: string): Promise<void> {
+		if (!verifyTotp(secret, code)) throw AppError.validation('invalid totp code')
+		await this.repos.users.setTotpSecret(userId, secret)
+	}
+
 	async login(input: LoginInput): Promise<LoginResult> {
-		const user = await this.repos.users.findByUsername(input.username)
+		const user = await this.resolveUser(input.username)
 		if (!user) throw AppError.validation('invalid credentials')
 		if (user.bannedAt) throw AppError.forbidden('user is banned')
 
@@ -120,6 +131,27 @@ export class AuthService {
 		const existing = await this.repos.sessions.findAllByUserId(user.id)
 		await this.sessions.revokeAllForUser(existing.map(s => s.id))
 		await this.repos.sessions.deleteAllByUserId(user.id)
+	}
+
+	// Login accepts the human nick the user actually typed ("ТёплыйВетер#0").
+	// An already-encoded handle ("12:34:0") is looked up directly; otherwise we
+	// reverse the nick into candidate handles (across locales) and pick the one
+	// that maps to a real user.
+	private async resolveUser(identifier: string): Promise<DbUser | null> {
+		const handle = identifier.trim()
+		if (/^\d+:\d+:\d+$/.test(handle)) {
+			return this.repos.users.findByUsername(handle)
+		}
+
+		const candidates = new Set<string>([
+			...resolveDisplayName(handle, 'ru'),
+			...resolveDisplayName(handle, 'en'),
+		])
+		for (const candidate of candidates) {
+			const user = await this.repos.users.findByUsername(candidate)
+			if (user) return user
+		}
+		return null
 	}
 
 	private async issueSession(user: DbUser, userAgent: string | null, ip: string): Promise<string> {
