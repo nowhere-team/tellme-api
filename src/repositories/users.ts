@@ -51,6 +51,32 @@ export class UserRepository {
 		return this.db.select().from(users).where(isNotNull(users.botPersona))
 	}
 
+	// reassign a fresh random username to an existing user (used during the
+	// registration flow before the nick is finalized)
+	async rerollUsername(userId: string): Promise<DbUser> {
+		const adjCount = DICTIONARY.ru.adjectives.length
+		const nounCount = DICTIONARY.ru.nouns.length
+
+		for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+			const aIdx = Math.floor(Math.random() * adjCount)
+			const nIdx = Math.floor(Math.random() * nounCount)
+			const disc = await this.nextDiscriminator(aIdx, nIdx)
+			const username = buildDisplayId(aIdx, nIdx, disc)
+
+			try {
+				const [user] = await this.db
+					.update(users)
+					.set({ username })
+					.where(eq(users.id, userId))
+					.returning()
+				if (user) return user
+			} catch {
+				// unique race on the new handle — try another
+			}
+		}
+		throw AppError.conflict('failed to reroll username')
+	}
+
 	async findById(id: string): Promise<DbUser | null> {
 		const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1)
 		return row ?? null

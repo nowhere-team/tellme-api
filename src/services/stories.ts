@@ -167,6 +167,14 @@ export class StoryService {
 		await this.repos.stories.hide(storyId)
 	}
 
+	// author-only hard delete of their own story
+	async deleteOwn(storyId: string, userId: string): Promise<void> {
+		const story = await this.repos.stories.findById(storyId)
+		if (!story) throw AppError.notFound('story', storyId)
+		if (story.authorId !== userId) throw AppError.forbidden('not the author')
+		await this.repos.stories.delete(storyId)
+	}
+
 	async restore(storyId: string): Promise<void> {
 		await this.repos.stories.restore(storyId)
 	}
