@@ -80,6 +80,7 @@ const warning = createEnum({
 	Hate: 'hate',
 	Illegal: 'illegal',
 	Minors: 'minors',
+	Lgbt: 'lgbt',
 })
 export const Warning = warning.obj
 export type Warning = (typeof Warning)[keyof typeof Warning]
