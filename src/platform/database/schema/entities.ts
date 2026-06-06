@@ -32,6 +32,8 @@ export const users = pgTable('users', {
 	recoveryHash: text('recovery_hash').notNull(),
 	role: userRoleEnum('role').notNull().default('user'),
 	bannedAt: timestamptz('banned_at'),
+	// non-null marks a synthetic "bot" account and names its persona; real users are null
+	botPersona: text('bot_persona'),
 	createdAt: timestamptz('created_at').defaultNow().notNull(),
 })
 

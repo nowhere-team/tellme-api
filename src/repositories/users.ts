@@ -1,5 +1,5 @@
 import { buildDisplayId, DICTIONARY, type Language } from '@nowhere-team/tellme-sdk'
-import { eq, inArray, like } from 'drizzle-orm'
+import { eq, inArray, isNotNull, like } from 'drizzle-orm'
 
 import { AppError } from '@/common/errors'
 import { type Connection, users } from '@/platform/database'
@@ -11,6 +11,7 @@ export interface CreateUserData {
 	totpSecret: string | null
 	recoveryHash: string
 	locale?: Language
+	botPersona?: string | null
 }
 
 const MAX_ATTEMPTS = 5
@@ -35,6 +36,8 @@ export class UserRepository {
 					passwordHash: data.passwordHash,
 					totpSecret: data.totpSecret,
 					recoveryHash: data.recoveryHash,
+					botPersona: data.botPersona ?? null,
+					locale: data.locale ?? 'ru',
 				})
 				.onConflictDoNothing({ target: users.username })
 				.returning()
@@ -42,6 +45,10 @@ export class UserRepository {
 			if (user) return user
 		}
 		throw AppError.conflict('failed to allocate username')
+	}
+
+	async findBots(): Promise<DbUser[]> {
+		return this.db.select().from(users).where(isNotNull(users.botPersona))
 	}
 
 	async findById(id: string): Promise<DbUser | null> {

@@ -6,6 +6,7 @@ import type { Repositories } from '@/repositories'
 import { type AiCallbacks, type AiProcessor, FakeAiProcessor, GeminiAiProcessor } from './ai'
 import { PassthroughCommentModerator } from './ai/comment-moderator'
 import { type AuthConfig, AuthService } from './auth'
+import { BotService } from './bots'
 import { CommentService } from './comments'
 import { SessionsService } from './sessions'
 import { StoryService } from './stories'
@@ -18,6 +19,7 @@ export interface Services {
 	comments: CommentService
 	bus: StreamBus
 	ai: AiProcessor
+	bots?: BotService
 }
 
 export interface ServicesDeps {
@@ -47,19 +49,25 @@ export function createServices(deps: ServicesDeps): Services {
 		? new FakeAiProcessor(callbacks)
 		: new GeminiAiProcessor(deps.openrouter!, callbacks, deps.logger)
 
-	stories = new StoryService(deps.repos, ai)
+	// AI bot farm (skipped in fake-AI mode / when no model is configured)
+	const bots = deps.openrouter
+		? new BotService(deps.repos, deps.openrouter, deps.logger)
+		: undefined
+
+	stories = new StoryService(deps.repos, ai, bots)
 
 	// NOTE: comment moderation via the streaming LLM hangs (plain-text reply
 	// parsed as JSON never resolves), so use the passthrough moderator.
 	const moderator = new PassthroughCommentModerator()
 
-	const comments = new CommentService(deps.repos, moderator)
+	const comments = new CommentService(deps.repos, moderator, bots)
 
-	return { auth, sessions, stories, comments, bus: deps.bus, ai }
+	return { auth, sessions, stories, comments, bus: deps.bus, ai, bots }
 }
 
 export * from './ai'
 export { AuthService } from './auth'
+export { BotService } from './bots'
 export { CommentService } from './comments'
 export { SessionsService } from './sessions'
 export { StoryService } from './stories'
