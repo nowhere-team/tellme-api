@@ -303,13 +303,18 @@ export class BotService {
 		user: string,
 	): Promise<T | null> {
 		try {
-			const { final } = this.openrouter.generateStream<unknown>({
+			const { chunks, final } = this.openrouter.generateStream<unknown>({
 				system,
 				user,
 				schema: jsonSchema,
 				temperature: 1.0,
 				paths: ['$'],
 			})
+			// the stream generator only runs while chunks is consumed; draining it
+			// drives the request to completion and resolves `final`
+			for await (const _ of chunks) {
+				// discard incremental chunks; we only want the final object
+			}
 			return schema.parse(await final)
 		} catch (err) {
 			this.logger.error('bot generation failed', err as Error)
