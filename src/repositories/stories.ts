@@ -137,6 +137,11 @@ export class StoryRepository {
 			.where(eq(stories.id, storyId))
 	}
 
+	// hard delete; votes, options, comments and reports cascade via FKs
+	async delete(storyId: string): Promise<void> {
+		await this.db.delete(stories).where(eq(stories.id, storyId))
+	}
+
 	async findById(id: string): Promise<DbStory | null> {
 		const [row] = await this.db.select().from(stories).where(eq(stories.id, id)).limit(1)
 		return row ?? null

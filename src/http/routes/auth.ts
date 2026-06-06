@@ -60,6 +60,13 @@ export function createAuthRoutes(
 		return c.body(null, 204)
 	})
 
+	app.post('/username/reroll', async c => {
+		const payload = c.get('auth')
+		if (!payload) throw AppError.forbidden('not authenticated')
+		const user = await auth.rerollUsername(payload.sub)
+		return c.json({ user })
+	})
+
 	app.post('/login', async c => {
 		const body = authSchemas.login.parse(await c.req.json())
 		const userAgent = c.req.header('User-Agent') ?? null

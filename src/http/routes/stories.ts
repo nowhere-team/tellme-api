@@ -62,6 +62,14 @@ export function createStoryRoutes(stories: StoryService) {
 		return c.json({ vote }, 201)
 	})
 
+	app.delete('/:id', async c => {
+		const auth = c.get('auth')
+		if (!auth) throw AppError.forbidden('authentication required')
+
+		await stories.deleteOwn(c.req.param('id'), auth.sub)
+		return c.body(null, 204)
+	})
+
 	return app
 }
 

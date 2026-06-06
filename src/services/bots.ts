@@ -48,7 +48,7 @@ const BOT_PERSONAS: Persona[] = [
 	{
 		key: 'boomer',
 		persona:
-			'Бумер: пишет как пожилой человек, осуждает молодёжь, "вот в наше время", иногда срывается на КАПС.',
+			'Советский дед: пожилой спокойный мужик, многое повидал, с лёгкой ностальгией по СССР и простым временам. По-доброму ворчит, рассуждает о нравах и о том, что раньше всё было проще и честнее. Говорит размеренно, рассудительно, БЕЗ капса и без агрессии.',
 	},
 	{
 		key: 'zoomer',
@@ -89,6 +89,60 @@ const BOT_PERSONAS: Persona[] = [
 		persona:
 			'Сентиментальный: всё переводит в чувства, "это так грустно...", эмоционально, с многоточиями.',
 	},
+	{
+		key: 'gopnik',
+		persona: 'Пацан с района: простой, прямой, "э, братан", по понятиям, без лишних слов.',
+	},
+	{
+		key: 'philosopher',
+		persona:
+			'Философ: рассуждает абстрактно, "а что вообще есть добро?", вопросы без ответов, отстранённо.',
+	},
+	{
+		key: 'karen',
+		persona:
+			'Скандальная тётка-правдоруб: возмущается, требует справедливости, "куда катится мир", напориста.',
+	},
+	{
+		key: 'intellectual',
+		persona:
+			'Сноб-интеллектуал: заумно, сложные слова, лёгкое презрение к простакам, ссылается на книги.',
+	},
+	{
+		key: 'conspiracy',
+		persona:
+			'Конспиролог: во всём видит подвох и скрытый умысел, "это всё неспроста", подозрителен.',
+	},
+	{
+		key: 'memer',
+		persona:
+			'Мемолог: отвечает отсылками и мемами, "это база", "имба", "так-то да", иронично и коротко.',
+	},
+	{
+		key: 'simp',
+		persona:
+			'Безусловный защитник: встаёт на сторону женщины/слабого в любой ситуации, рыцарь, наивно.',
+	},
+	{
+		key: 'accountant',
+		persona:
+			'Счетовод: всё меряет деньгами и выгодой, "а сколько ты на этом потерял/заработал?", прагматик.',
+	},
+	{
+		key: 'anxious',
+		persona:
+			'Тревожник: всё драматизирует от тревоги, "а вдруг будет хуже", накручивает, переживает за всех.',
+	},
+	{
+		key: 'veteran',
+		persona:
+			'Старожил платформы: бывалый, "видали и похуже", всё это уже сто раз читал, устало-снисходителен.',
+	},
+	{
+		key: 'dramaturg',
+		persona:
+			'Театрал: пишет как сценарист, "акт второй, занавес", пафосно-театрально, с режиссёрскими ремарками.',
+	},
 ]
 
 const PERSONA_BY_KEY = new Map(BOT_PERSONAS.map(p => [p.key, p.persona]))
@@ -104,8 +158,8 @@ const swarmSchema = z.object({
 				text: z.string().min(1).max(400),
 			}),
 		)
-		.min(3)
-		.max(9),
+		.min(5)
+		.max(18),
 })
 
 const replySchema = z.object({
@@ -128,7 +182,7 @@ function replyJsonSchema(): object {
 }
 
 const SWARM_SYSTEM = `ты генерируешь комментарии сообщества под анонимной историей-дилеммой (формат "осудите меня").
-тебе дан список УЧАСТНИКОВ, у каждого свой характер. сгенерируй 4-8 коротких комментариев, каждый СТРОГО в характере своего участника.
+тебе дан список УЧАСТНИКОВ, у каждого свой характер. сгенерируй 12-16 коротких комментариев, каждый СТРОГО в характере своего участника (используй разных участников).
 - author: индекс участника из списка.
 - replyTo: индекс БОЛЕЕ РАННЕГО комментария в этом же массиве, если это ответ на него (споры в ветках), иначе null. делай 1-3 ответа-реплики между участниками.
 - vote: индекс варианта голосования, за который этот участник голосует, или null.
@@ -187,7 +241,7 @@ export class BotService {
 			const bots = shuffle(await this.repos.users.findBots())
 			if (bots.length === 0) return
 
-			const commenters = bots.slice(0, 4 + randInt(4)) // 4-7 commenters
+			const commenters = bots.slice(0, 12 + randInt(5)) // 12-16 commenters
 			const out = await this.generate(
 				swarmSchema,
 				swarmJsonSchema(),
@@ -209,7 +263,7 @@ export class BotService {
 					c.replyTo != null && c.replyTo >= 0 && c.replyTo < i ? createdIds[c.replyTo] : null
 				createdIds.push(await this.postComment(storyId, bot.id, parentId, c.text))
 				this.castVote(storyId, bot.id, detail.options, c.vote)
-				await sleep(400 + randInt(1800)) // trickle in so the poll surfaces them gradually
+				await sleep(200 + randInt(900)) // trickle in so the poll surfaces them gradually
 			}
 
 			// a few extra silent voters so votes outnumber comments, like a real feed

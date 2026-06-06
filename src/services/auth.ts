@@ -96,6 +96,12 @@ export class AuthService {
 		await this.repos.users.setTotpSecret(userId, secret)
 	}
 
+	// reroll the current user's nick (registration flow, before it's finalized)
+	async rerollUsername(userId: string): Promise<PublicUser> {
+		const user = await this.repos.users.rerollUsername(userId)
+		return toPublic(user)
+	}
+
 	async login(input: LoginInput): Promise<LoginResult> {
 		const user = await this.resolveUser(input.username)
 		if (!user) throw AppError.validation('invalid credentials')
