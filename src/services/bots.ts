@@ -77,7 +77,7 @@ const swarmSchema = z.object({
 			}),
 		)
 		.min(5)
-		.max(18),
+		.max(14),
 })
 
 const replySchema = z.object({
@@ -101,7 +101,7 @@ function replyJsonSchema(): object {
 
 const SWARM_SYSTEM = `ты пишешь комментарии под анонимной историей-дилеммой — как ЖИВОЙ тред в рунете, смесь двача, пикабу и women.ru. должно читаться как реальные разные люди, а НЕ как боты, отыгрывающие роли.
 
-сгенерируй 12-16 комментариев от РАЗНЫХ участников из данного списка.
+сгенерируй 10-14 комментариев от РАЗНЫХ участников из данного списка.
 поля каждого комментария:
 - author: индекс участника.
 - replyTo: индекс более РАННЕГО комментария в этом массиве, если это ответ на него; сделай 2-4 таких ответа (живые перепалки в ветках), у остальных null.
@@ -111,7 +111,7 @@ const SWARM_SYSTEM = `ты пишешь комментарии под анони
 как писать text (КРИТИЧНО, иначе получается мусор):
 - цепляйся за КОНКРЕТНЫЕ детали ИМЕННО этой истории — что человек сделал, с кем, чем кончилось, конкретные цифры/слова. по комменту должно быть видно, что он про эту историю, а не шаблон.
 - характер участника — лёгкий уклон (грубый / мягкий / ехидный / занудный / циничный), а НЕ роль для клоунады. НЕ объявляй свою роль, НЕ пиши театрально ("акт второй", "занавес"), без режиссёрских ремарок, без заученных мемов через слово ("это база", "имба", "геймплей за хилера" — НЕЛЬЗЯ).
-- РАЗНАЯ длина: больше половины — короткие реплики в 3-10 слов; несколько — пара предложений; один-два подлиннее.
+- РАЗНАЯ длина, но ПРЕОБЛАДАЮТ короткие: минимум 70% реплик — 3-10 слов; пара комментов в одно предложение; НЕ БОЛЬШЕ ОДНОГО длинного (2-3 предложения). не раздувай.
 - РАЗНЫЙ тон и регистр: тёмный циничный юмор; житейская ирония ("плюсую", "минусанул", "баян"); эмоциональное осуждение и форумные советы ("бросай", "беги", "разведись", "вызывай органы"); кто-то занудно по фактам; кто-то просто поддел одной строкой.
 - живая речь: маленькие буквы, лёгкие опечатки, мат по делу — норм. но без кринжа и без переигрывания.
 - мнения КОНФЛИКТУЮТ: часть жёстко осуждает автора, часть оправдывает, часть мимо кассы, кто-то троллит. не повторяйте одну и ту же мысль.
@@ -287,23 +287,26 @@ export class BotService {
 		system: string,
 		user: string,
 	): Promise<T | null> {
-		try {
-			const { chunks, final } = this.openrouter.generateStream<unknown>({
-				system,
-				user,
-				schema: jsonSchema,
-				temperature: 1.0,
-				paths: ['$'],
-			})
-			// the stream generator only runs while chunks is consumed; draining it
-			// drives the request to completion and resolves `final`
-			for await (const _ of chunks) {
-				// discard incremental chunks; we only want the final object
+		// occasionally the model truncates a long JSON answer (unparseable) — retry once
+		for (let attempt = 0; attempt < 2; attempt++) {
+			try {
+				const { chunks, final } = this.openrouter.generateStream<unknown>({
+					system,
+					user,
+					schema: jsonSchema,
+					temperature: 1.0,
+					paths: ['$'],
+				})
+				// the stream generator only runs while chunks is consumed; draining it
+				// drives the request to completion and resolves `final`
+				for await (const _ of chunks) {
+					// discard incremental chunks; we only want the final object
+				}
+				return schema.parse(await final)
+			} catch (err) {
+				this.logger.error('bot generation failed', err as Error)
 			}
-			return schema.parse(await final)
-		} catch (err) {
-			this.logger.error('bot generation failed', err as Error)
-			return null
 		}
+		return null
 	}
 }
