@@ -65,6 +65,9 @@ export async function start(options?: { useFakeAi?: boolean }): Promise<App> {
 		useFakeAi,
 	})
 
+	// make sure the bot farm is staffed (idempotent; no-op after first boot)
+	await services.bots?.ensureBots()
+
 	const server = createServer({
 		database,
 		cache,

@@ -33,6 +33,7 @@ export class StoryService {
 	constructor(
 		private readonly repos: Repositories,
 		private readonly ai: AiProcessor,
+		private readonly bots?: { swarmStory: (storyId: string) => Promise<void> },
 	) {}
 
 	async submitDraft(authorId: string, input: SubmitDraftInput): Promise<DbStory> {
@@ -95,6 +96,8 @@ export class StoryService {
 
 		const published = await this.repos.stories.publish(storyId)
 		if (!published) throw AppError.conflict('failed to publish')
+		// fire-and-forget: let the bot crowd swarm the freshly published story
+		void this.bots?.swarmStory(storyId)
 		return this.toPublic(published, userId)
 	}
 

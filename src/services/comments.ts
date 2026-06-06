@@ -28,6 +28,9 @@ export class CommentService {
 	constructor(
 		private readonly repos: Repositories,
 		private readonly moderator: CommentModerator,
+		private readonly bots?: {
+			replyToComment: (storyId: string, comment: DbComment) => Promise<void>
+		},
 	) {}
 
 	async post(storyId: string, userId: string, input: PostCommentInput): Promise<CommentView> {
@@ -51,6 +54,10 @@ export class CommentService {
 		})
 
 		const user = await this.repos.users.findById(userId)
+		// fire-and-forget: real users get bot replies in their threads (bots post
+		// directly via repos, so they never reach this path and can't self-trigger)
+		if (!user?.botPersona) void this.bots?.replyToComment(storyId, comment)
+
 		return this.toView(comment, story.authorId, user ?? null, [])
 	}
 
