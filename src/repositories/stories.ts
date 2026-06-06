@@ -1,9 +1,9 @@
 import type { Category, Rejection, Warning } from '@nowhere-team/tellme-sdk'
-import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, getTableColumns, inArray, lt, or, sql } from 'drizzle-orm'
 
 import { type Connection, stories, voteOptions } from '@/platform/database'
 
-import { decodeCursor, encodeCursor } from './_cursor'
+import { decodeCursor, decodeFeedCursor, encodeCursor, encodeFeedCursor } from './_cursor'
 
 export type DbStory = typeof stories.$inferSelect
 export type DbVoteOption = typeof voteOptions.$inferSelect
@@ -162,42 +162,57 @@ export class StoryRepository {
 
 		if (query.category) conditions.push(eq(stories.category, query.category))
 
+		// time-decayed "hot" score; reused for ordering and for the cursor key
+		const score = sql<number>`(${stories.totalVoteCount}::float / power(extract(epoch from now() - ${stories.publishedAt}) / 3600 + 2, 1.5))`
+
 		if (query.cursor) {
-			const c = decodeCursor(query.cursor)
-			if (c) {
-				conditions.push(
-					or(
-						lt(stories.publishedAt, c.date),
-						and(sql`${stories.publishedAt} = ${c.date.toISOString()}`, lt(stories.id, c.id)),
-					)!,
-				)
+			const c = decodeFeedCursor(query.cursor)
+			// ignore a cursor produced for a different sort
+			if (c && c.sort === sort) {
+				if (sort === 'hot') {
+					conditions.push(
+						or(sql`${score} < ${c.key}`, and(sql`${score} = ${c.key}`, lt(stories.id, c.id)))!,
+					)
+				} else {
+					const d = new Date(c.key)
+					conditions.push(
+						or(
+							lt(stories.publishedAt, d),
+							and(sql`${stories.publishedAt} = ${d.toISOString()}`, lt(stories.id, c.id)),
+						)!,
+					)
+				}
 			}
 		}
 
 		const where = and(...conditions)
 
-		const rows =
-			sort === 'hot'
-				? await this.db
-						.select()
-						.from(stories)
-						.where(where)
-						.orderBy(
-							sql`(${stories.totalVoteCount}::float / power(extract(epoch from now() - ${stories.publishedAt}) / 3600 + 2, 1.5)) desc`,
-							desc(stories.id),
-						)
-						.limit(limit + 1)
-				: await this.db
-						.select()
-						.from(stories)
-						.where(where)
-						.orderBy(desc(stories.publishedAt), desc(stories.id))
-						.limit(limit + 1)
+		const rows = await this.db
+			.select({ ...getTableColumns(stories), _score: score })
+			.from(stories)
+			.where(where)
+			.orderBy(
+				...(sort === 'hot'
+					? [sql`${score} desc`, desc(stories.id)]
+					: [desc(stories.publishedAt), desc(stories.id)]),
+			)
+			.limit(limit + 1)
 
 		const hasMore = rows.length > limit
-		const items = hasMore ? rows.slice(0, limit) : rows
-		const last = items.at(-1)
-		const nextCursor = hasMore && last?.publishedAt ? encodeCursor(last.publishedAt, last.id) : null
+		const page = hasMore ? rows.slice(0, limit) : rows
+		const items = page.map(({ _score, ...s }) => s)
+		const last = page.at(-1)
+
+		let nextCursor: string | null = null
+		if (hasMore && last) {
+			nextCursor =
+				sort === 'hot'
+					? encodeFeedCursor('hot', last._score, last.id)
+					: last.publishedAt
+						? encodeFeedCursor('new', last.publishedAt.getTime(), last.id)
+						: null
+		}
+
 		return { items, nextCursor }
 	}
 
