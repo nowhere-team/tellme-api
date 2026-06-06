@@ -81,10 +81,7 @@ const swarmSchema = z.object({
 })
 
 const replySchema = z.object({
-	replies: z
-		.array(z.object({ author: z.number().int(), text: z.string().min(1).max(400) }))
-		.min(1)
-		.max(2),
+	text: z.string().min(1).max(400),
 })
 
 const toJson = (s: z.ZodType) => z.toJSONSchema(s, { target: 'draft-7', unrepresentable: 'any' })
@@ -118,10 +115,12 @@ const SWARM_SYSTEM = `ты пишешь комментарии под анони
 
 верни строго JSON по схеме.`
 
-const REPLY_SYSTEM = `ты — участник обсуждения под историей-дилеммой в рунете (вайб двача / пикабу / women.ru). тебе показывают комментарий реального пользователя — ответь ему 1-2 короткими репликами строго по сути его слов.
-- author = индекс участника из списка; характер — лёгкий уклон, не клоунада.
-- цепляйся за то, ЧТО он написал, и за детали истории; можно поддеть, поспорить, согласиться или развить.
-- живо, конкретно, коротко, разговорно. без театральщины, без спама мемами, без объявления своей роли. верни строго JSON по схеме.`
+const REPLY_SYSTEM = `ты — участник обсуждения историй-дилемм в рунете (вайб двача / пикабу / women.ru). у тебя есть характер (дан ниже). тебе показывают ветку и просят ответить на ПОСЛЕДНЮЮ реплику.
+- ответь ОДНОЙ короткой репликой строго по сути сказанного, в своём характере.
+- в ветке помечено, кто автор истории, какие реплики ТВОИ (прошлые) и кто другие. держи свою линию из прошлых реплик, если они есть.
+- если тебе отвечает АВТОР ИСТОРИИ — учитывай это: можешь обращаться к нему как к автору ("ты же сам это и сделал", "автор, ну ты даёшь").
+- цепляйся за конкретные слова собеседника и детали истории. живо, разговорно. без театральщины, без объявления роли, без мемов через слово.
+верни строго JSON: {"text":"..."}.`
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 const randInt = (n: number) => Math.floor(Math.random() * n)
@@ -212,36 +211,52 @@ export class BotService {
 			const detail = await this.repos.stories.findByIdWithOptions(storyId)
 			if (!detail || detail.status !== 'published') return
 
-			const bots = shuffle(await this.repos.users.findBots())
+			const bots = await this.repos.users.findBots()
 			if (bots.length === 0) return
-			const repliers = bots.slice(0, 1 + randInt(2)) // 1-2 repliers
+			const botById = new Map(bots.map(b => [b.id, b]))
 
-			let parentText = ''
-			if (comment.parentId) {
-				const p = await this.repos.comments.findById(comment.parentId)
-				if (p) parentText = p.content
+			// walk up the thread (root -> ... -> this new comment) for context
+			const chain: DbComment[] = [comment]
+			let cur = comment
+			for (let guard = 0; cur.parentId && guard < 8; guard++) {
+				const p = await this.repos.comments.findById(cur.parentId)
+				if (!p) break
+				chain.unshift(p)
+				cur = p
 			}
+
+			// reply AS the bot the user addressed (continuity: talk to a specific bot);
+			// fall back to a random bot if they replied to the story / a real user
+			const parent = comment.parentId ? await this.repos.comments.findById(comment.parentId) : null
+			const responder = (parent && botById.get(parent.authorId)) || bots[randInt(bots.length)]
+
+			const isAuthor = comment.authorId === detail.authorId
+			const label = (c: DbComment) =>
+				c.authorId === detail.authorId
+					? 'АВТОР ИСТОРИИ'
+					: c.authorId === responder.id
+						? 'ты (ранее)'
+						: botById.has(c.authorId)
+							? 'другой участник'
+							: 'пользователь'
+			const thread = chain.map(c => `${label(c)}: ${c.content}`).join('\n')
 
 			const out = await this.generate(
 				replySchema,
 				replyJsonSchema(),
 				REPLY_SYSTEM,
 				[
-					`ИСТОРИЯ: ${detail.title ?? ''}\n${renderText(detail.text, detail.replacements).slice(0, 600)}`,
-					parentText ? `ВЫШЕ В ВЕТКЕ: ${parentText}` : '',
-					`КОММЕНТ ПОЛЬЗОВАТЕЛЯ (ответь именно на него): ${comment.content}`,
-					`УЧАСТНИКИ:\n${repliers.map((b, i) => `${i}: ${this.persona(b)}`).join('\n')}`,
-				]
-					.filter(Boolean)
-					.join('\n\n'),
+					`ИСТОРИЯ: ${detail.title ?? ''}\n${renderText(detail.text, detail.replacements).slice(0, 500)}`,
+					`ВЕТКА (сверху вниз, последняя — на неё отвечаешь):\n${thread}`,
+					isAuthor
+						? 'ВНИМАНИЕ: на последнюю реплику тебе отвечает САМ АВТОР истории.'
+						: 'на последнюю реплику отвечает обычный участник (не автор истории).',
+					`ТВОЙ ХАРАКТЕР: ${this.persona(responder)}`,
+				].join('\n\n'),
 			)
 			if (!out) return
 
-			for (const r of out.replies) {
-				const bot = repliers[((r.author % repliers.length) + repliers.length) % repliers.length]
-				await this.postComment(storyId, bot.id, comment.id, r.text)
-				await sleep(900 + randInt(2600))
-			}
+			await this.postComment(storyId, responder.id, comment.id, out.text)
 		} catch (err) {
 			this.logger.error('bot reply failed', err as Error)
 		}
